@@ -34,4 +34,11 @@ export function commitChanges(message: string): boolean {
     return false;
   }
 }
+export function hasStagedChanges(): boolean {
+  const diff = runGitCommand("git diff --cached --name-only");
+  return diff.length > 0;
+}
+
+
+
 
