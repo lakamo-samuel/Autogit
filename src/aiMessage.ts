@@ -6,9 +6,19 @@ import { generateCommitMessage } from "./commitMessage.ts";
  * Generate commit message using Gemini API
  */
 export async function generateCommitMessageAI(): Promise<string> {
-  const diff = execSync("git diff --cached", { encoding: "utf-8" });
+  let diff = "";
 
-  //   if (!diff.trim()) return generateCommitMessage();
+  try {
+    diff = execSync("git diff --cached", { encoding: "utf-8" }).trim();
+  } catch {
+    return generateCommitMessage();
+  }
+
+  // If nothing is staged, don’t call AI
+  if (!diff) {
+    console.log("🧱 No staged changes, using fallback commit message");
+    return generateCommitMessage();
+  }
 
   try {
     const res = await fetch(
@@ -23,27 +33,54 @@ export async function generateCommitMessageAI(): Promise<string> {
             {
               parts: [
                 {
-                  text: `Write a concise, conventional git commit message for these changes:\n\n${diff}`,
+                  text: `
+You are a senior software engineer.
+
+Analyze the following git diff and write ONE concise,
+human-like git commit message.
+
+Rules:
+- Use imperative mood (Add, Fix, Remove, Refactor)
+- Be specific, not generic
+- Mention WHAT changed (and WHY if obvious)
+- Follow conventional commits if applicable
+- Do NOT wrap in quotes
+
+Git diff:
+${diff}
+                  `,
                 },
               ],
             },
           ],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 50,
+            maxOutputTokens: 60,
           },
         }),
       },
     );
 
+    if (!res.ok) {
+      console.warn(
+        `🧱 Gemini HTTP ${res.status}, using fallback commit message`,
+      );
+      return generateCommitMessage();
+    }
+
     const data = (await res.json()) as any;
 
-    return (
-      data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
-      generateCommitMessage()
-    );
+    const aiMessage = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    if (!aiMessage) {
+      console.log("🧱 Gemini returned empty message, using fallback");
+      return generateCommitMessage();
+    }
+
+    console.log("🤖 Using AI-generated commit message");
+    return aiMessage;
   } catch (error) {
-    console.error("Gemini failed, using fallback:", error);
-    // return generateCommitMessage();
+    console.error("🧱 Gemini failed, using fallback:", error);
+    return generateCommitMessage();
   }
 }
