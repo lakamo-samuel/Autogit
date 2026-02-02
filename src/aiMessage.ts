@@ -1,48 +1,49 @@
 import { execSync } from "child_process";
-import { generateCommitMessage } from "./commitMessage.ts"; // fallback
-
-interface PaLMResponse {
-  candidates?: { output?: string }[];
-}
+import "dotenv/config";
+import { generateCommitMessage } from "./commitMessage.ts";
 
 /**
- * Generate commit message using Google Gemini / PaLM API
- * Requires:
- * - GOOGLE_API_KEY environment variable set
+ * Generate commit message using Gemini API
  */
 export async function generateCommitMessageAI(): Promise<string> {
-  // Get staged diff
   const diff = execSync("git diff --cached", { encoding: "utf-8" });
-  if (!diff) return generateCommitMessage(); // fallback
 
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) return generateCommitMessage(); // fallback
+  if (!diff.trim()) return generateCommitMessage();
 
   try {
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generateText",
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          prompt: {
-            text: `Summarize these git changes into a concise commit message:\n\n${diff}`,
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Write a concise, conventional git commit message for these changes:\n\n${diff}`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 50,
           },
-          temperature: 0.3,
-          maxOutputTokens: 50,
         }),
       },
     );
 
-    const data = await response.json();
-    const message = data?.candidates?.[0]?.output?.trim();
+    const data = (await res.json()) as any;
 
-    return message || generateCommitMessage(); // fallback if API returns nothing
-  } catch (err) {
-    console.error("Gemini/PaLM AI failed, using local commit message", err);
-    return generateCommitMessage(); // fallback
+    return (
+      data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+      generateCommitMessage()
+    );
+  } catch (error) {
+    console.error("Gemini failed, using fallback:", error);
+    return generateCommitMessage();
   }
 }
