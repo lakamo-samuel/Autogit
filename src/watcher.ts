@@ -72,6 +72,6 @@ commitTimer = setTimeout(async () => {
   if (committed) {
     console.log("Auto-commit created:", message);
   }
-};, COMMIT_DELAY);
+}, COMMIT_DELAY);
 
 }
