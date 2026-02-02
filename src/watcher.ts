@@ -7,6 +7,7 @@ import {
   stageAllChanges,
   commitChanges,
 } from "./git.ts";
+import { generateCommitMessageAI } from "./aiMessage.ts";
 
 let watcher: FSWatcher | null = null;
 let commitTimer: NodeJS.Timeout | null = null;
@@ -57,20 +58,20 @@ function onFileEvent(type: "added" | "modified" | "deleted", filePath: string) {
     clearTimeout(commitTimer);
   }
 
-  // Wait for quiet period
-commitTimer = setTimeout(() => {
+
+commitTimer = setTimeout(async () => {
   if (!hasUncommittedChanges()) return;
 
   stageAllChanges();
 
-  const timestamp = new Date().toISOString();
-  const message = `autogit: update (${timestamp})`;
+  // AI-generated commit message
+  const message = await generateCommitMessageAI();
 
   const committed = commitChanges(message);
 
   if (committed) {
-    console.log("Auto-commit created");
+    console.log("Auto-commit created:", message);
   }
-}, COMMIT_DELAY);
+};, COMMIT_DELAY);
 
 }
