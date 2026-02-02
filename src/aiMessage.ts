@@ -37,8 +37,8 @@ export async function generateCommitMessageAI(): Promise<string> {
       },
     );
 
-    const data: PaLMResponse = await response.json();
-    const message = data.candidates?.[0]?.output?.trim();
+    const data = await response.json();
+    const message = data?.candidates?.[0]?.output?.trim();
 
     return message || generateCommitMessage(); // fallback if API returns nothing
   } catch (err) {
