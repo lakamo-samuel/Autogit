@@ -1,6 +1,10 @@
 import fs from "fs";
 import path from "path";
 import { defaultConfig } from "./config.ts";
+import {
+  startWatcher as runWatcher,
+  stopWatcher as haltWatcher,
+} from "./watcher.ts";
 
 // CLI actions
 export function initRepo() {
@@ -13,13 +17,13 @@ export function initRepo() {
   console.log("AutoGit config initialized!");
 }
 
+
 export function startWatcher() {
-  console.log("Watcher started (placeholder for now)");
-  // Later: import watcher.ts and start file watching
+  runWatcher();
 }
 
 export function stopWatcher() {
-  console.log("Watcher stopped (placeholder, Ctrl+C works)");
+  haltWatcher();
 }
 
 export function showConfig() {
@@ -28,6 +32,6 @@ export function showConfig() {
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     console.log("Current AutoGit config:", config);
   } else {
-    console.log('Config not found. Run "autogit init" first.');
+    console.log('Config not found. Run "autogit init" first to initiate .');
   }
 }
