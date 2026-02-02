@@ -24,8 +24,9 @@ export async function generateCommitMessageAI(): Promise<string> {
       }),
     });
 
-    const data = await response.json();
-    return data.message || generateCommitMessage(); // fallback
+    const data = (await response.json()) as any;
+    return data?.message ?? generateCommitMessage();
+
   } catch (err) {
     console.error("Gemini AI failed, using local commit message", err);
     return generateCommitMessage(); // fallback
