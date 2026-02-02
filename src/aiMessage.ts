@@ -8,7 +8,7 @@ import { generateCommitMessage } from "./commitMessage.ts";
 export async function generateCommitMessageAI(): Promise<string> {
   const diff = execSync("git diff --cached", { encoding: "utf-8" });
 
-  if (!diff.trim()) return generateCommitMessage();
+  //   if (!diff.trim()) return generateCommitMessage();
 
   try {
     const res = await fetch(
@@ -44,6 +44,6 @@ export async function generateCommitMessageAI(): Promise<string> {
     );
   } catch (error) {
     console.error("Gemini failed, using fallback:", error);
-    return generateCommitMessage();
+    // return generateCommitMessage();
   }
 }
