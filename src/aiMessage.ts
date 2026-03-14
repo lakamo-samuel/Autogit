@@ -22,47 +22,46 @@ export async function generateCommitMessageAI(): Promise<string> {
   }
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
+  const res = await fetch(
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": API_KEY
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
             {
-              parts: [
-                {
-                  text: `
-You are a senior software engineer.
+              text: `You are a senior software engineer.
 
-Analyze the following git diff and write ONE concise,
-human-like git commit message.
+Analyze the git diff and write ONE concise commit message.
 
 Rules:
-- Use imperative mood (Add, Fix, Remove, Refactor)
-- Be specific, not generic
-- Mention WHAT changed (and WHY if obvious)
-- Follow conventional commits if applicable
-- Do NOT wrap in quotes
+- Imperative mood
+- Conventional commits
+- Mention what changed
 
 Git diff:
-${diff}
-                  `,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 60,
-          },
-        }),
-      },
-    );
+${diff}`
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 60,
+        responseMimeType: "text/plain"
+      }
+    })
+  }
+);
 
     if (!res.ok) {
+       const err = await res.text();
+       console.error(err);
       console.warn(
         `🧱 Gemini HTTP ${res.status}, using fallback commit message`,
       );
