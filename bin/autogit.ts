@@ -30,5 +30,4 @@ program
   .command("config")
   .description("Show current AutoGit config")
   .action(showConfig);
-
 program.parse(process.argv);

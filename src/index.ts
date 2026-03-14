@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { defaultConfig } from "./config.ts";
+import "dotenv/config";
 import {
   startWatcher as runWatcher,
   stopWatcher as haltWatcher,
@@ -20,6 +21,8 @@ export function initRepo() {
 
 export function startWatcher() {
   runWatcher();
+  console.log("API KEY:", process.env.GEMINI_API_KEY ? "✅ Found" : "❌ Not Found");
+
 }
 
 export function stopWatcher() {
