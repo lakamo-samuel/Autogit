@@ -86,7 +86,7 @@ ${diff}`,
     clearTimeout(timeout);
 
     if (!res.ok) {
-      console.warn(`🧱 Gemini HTTP ${res.status}, using fallback`);
+      console.warn(` Gemini HTTP ${res.status}, using fallback`);
       return generateCommitMessage();
     }
 
@@ -95,15 +95,15 @@ ${diff}`,
     const aiMessage = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
     if (!aiMessage) {
-      console.log("🧱 Empty AI message, using fallback");
+      console.log("Empty AI message, using fallback");
       return generateCommitMessage();
     }
 
-    console.log("🤖 AI Commit:", aiMessage);
+    console.log(" AI Commit:", aiMessage);
 
     return aiMessage;
   } catch (error) {
-    console.error("🧱 AI request failed:", error.message);
+    console.error("AI request failed:", error.message);
     return generateCommitMessage();
   }
 }
