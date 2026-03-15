@@ -6,6 +6,7 @@ import {
   stopWatcher,
   showConfig,
 } from "../src/index.js";
+import { loginUser } from "../src/login.js";
 
 const program = new Command();
 
@@ -18,7 +19,10 @@ program
   .command("init")
   .description("Initialize AutoGit config")
   .action(initRepo);
-
+program
+  .command("login")
+  .description("Add your Gemini API key")
+  .action(loginUser);
 program
   .command("start")
   .description("Start AutoGit watcher")

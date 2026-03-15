@@ -1,70 +1,86 @@
 import { execSync } from "child_process";
-import "dotenv/config";
 import { generateCommitMessage } from "./commitMessage.js";
+import { getApiKey, defaultConfig } from "./config.js";
 
-/**
- * Generate commit message using Gemini API
- */
-const API_KEY = process.env.GEMINI_API_KEY;
+
 export async function generateCommitMessageAI() {
+const API_KEY = getApiKey();
+
   let diff = "";
 
   try {
-    diff = execSync("git diff --cached", { encoding: "utf-8" }).trim();
+    diff = execSync("git diff --cached --ignore-all-space", {
+      encoding: "utf-8",
+    }).trim();
   } catch {
     return generateCommitMessage();
   }
 
-  // If nothing is staged, don’t call AI
   if (!diff) {
     console.log("🧱 No staged changes, using fallback commit message");
     return generateCommitMessage();
   }
 
-  try {
-  const res = await fetch(
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": API_KEY
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            {
-              text: `You are a senior software engineer.
+  // Limit diff size
+  const diffLines = diff.split("\n");
 
-Analyze the git diff and write ONE concise commit message.
+  if (diffLines.length > defaultConfig.maxDiffLines) {
+    diff = diffLines.slice(0, defaultConfig.maxDiffLines).join("\n");
+  }
+
+  const controller = new AbortController();
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 10000);
+
+  try {
+    console.log("🧠 Generating AI commit message...");
+
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": API_KEY,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `You are a senior software engineer.
+
+Analyze the git diff and write a conventional commit message.
 
 Rules:
-- Imperative mood
-- Conventional commits
-- Mention what changed
+- Format: type(scope): description
+- Types: feat, fix, refactor, docs, test, chore
+- Use imperative mood
+- Max 12 words
+- No quotes
 
 Git diff:
-${diff}`
-            }
-          ]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 60,
-        responseMimeType: "text/plain"
-      }
-    })
-  }
-);
+${diff}`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 60,
+            responseMimeType: "text/plain",
+          },
+        }),
+      },
+    );
+
+    clearTimeout(timeout);
 
     if (!res.ok) {
-       const err = await res.text();
-       console.error(err);
-      // console.warn(
-      //   `🧱 Gemini HTTP ${res.status}, using fallback commit message`,
-      // );
+      console.warn(`🧱 Gemini HTTP ${res.status}, using fallback`);
       return generateCommitMessage();
     }
 
@@ -73,15 +89,15 @@ ${diff}`
     const aiMessage = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
     if (!aiMessage) {
-      console.log("🧱 Gemini returned empty message, using fallback");
+      console.log("🧱 Empty AI message, using fallback");
       return generateCommitMessage();
     }
 
-    console.log("🤖 Using AI-generated commit message");
-    console.log("AI Message:", aiMessage);
+    console.log("🤖 AI Commit:", aiMessage);
+
     return aiMessage;
   } catch (error) {
-    console.error("🧱 Gemini failed, using fallback:", error);
+    console.error("🧱 AI request failed:", error.message);
     return generateCommitMessage();
   }
 }

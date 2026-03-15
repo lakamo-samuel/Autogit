@@ -1,4 +1,4 @@
-import chokidar, { FSWatcher } from "chokidar";
+import chokidar from "chokidar";
 import path from "path";
 import { defaultConfig } from "./config.js";
 import {
@@ -10,12 +10,19 @@ import {
 import { generateCommitMessageAI } from "./aiMessage.js";
 
 let watcher = null;
-let commitTimer= null;
-const COMMIT_DELAY = 3000; // 3 seconds of silence
+let commitTimer = null;
+let isCommitting = false;
+
+const COMMIT_DELAY = 5000;
 
 export function startWatcher(config = defaultConfig) {
   if (watcher) {
-    console.log("Watcher is already running");
+    console.log("Watcher already running");
+    return;
+  }
+
+  if (!isGitRepo()) {
+    console.log("Not a git repository");
     return;
   }
 
@@ -24,7 +31,14 @@ export function startWatcher(config = defaultConfig) {
   );
 
   watcher = chokidar.watch(watchPaths, {
-    ignored: config.ignored,
+    ignored: [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/.env",
+      "**/coverage/**",
+    ],
     ignoreInitial: true,
     persistent: true,
   });
@@ -34,44 +48,54 @@ export function startWatcher(config = defaultConfig) {
     .on("change", (filePath) => onFileEvent("modified", filePath))
     .on("unlink", (filePath) => onFileEvent("deleted", filePath));
 
-  console.log("AutoGit watcher started");
+  console.log("AutoGit watching for changes...");
 }
 
 export function stopWatcher() {
   if (!watcher) {
-    console.log("Watcher is not running");
+    console.log("Watcher not running");
     return;
   }
 
   watcher.close();
   watcher = null;
+
   console.log("AutoGit watcher stopped");
 }
 
 function onFileEvent(type, filePath) {
   console.log(`[${type.toUpperCase()}] ${filePath}`);
 
-  if (!isGitRepo()) return;
-
-  // Reset timer if changes keep coming
   if (commitTimer) {
     clearTimeout(commitTimer);
   }
 
+  commitTimer = setTimeout(async () => {
+    if (isCommitting) return;
 
-commitTimer = setTimeout(async () => {
-  if (!hasUncommittedChanges()) return;
+    if (!hasUncommittedChanges()) return;
 
-  stageAllChanges();
+    try {
+      isCommitting = true;
 
-  // AI-generated commit message
-  const message = await generateCommitMessageAI();
+      console.log("Staging changes...");
 
-  const committed = commitChanges(message);
+      stageAllChanges();
 
-  if (committed) {
-    console.log("Auto-commit created:", message);
-  }
-}, COMMIT_DELAY);
+      const message = await generateCommitMessageAI();
 
+      const committed = commitChanges(message);
+
+      if (committed) {
+        console.log("✅ Commit created:", message);
+      }
+    } finally {
+      isCommitting = false;
+    }
+  }, COMMIT_DELAY);
 }
+
+process.on("SIGINT", () => {
+  if (watcher) watcher.close();
+  process.exit();
+});
