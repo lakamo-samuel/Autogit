@@ -66,6 +66,10 @@ export function stopWatcher() {
 function onFileEvent(type, filePath) {
   console.log(`[${type.toUpperCase()}] ${filePath}`);
 
+  // track changed files
+  changedFiles.add(filePath);
+
+  // reset timer
   if (commitTimer) {
     clearTimeout(commitTimer);
   }
@@ -73,10 +77,12 @@ function onFileEvent(type, filePath) {
   commitTimer = setTimeout(async () => {
     if (isCommitting) return;
 
-    if (!hasUncommittedChanges()) return;
+    if (changedFiles.size === 0) return;
 
     try {
       isCommitting = true;
+
+      console.log(`📦 Preparing commit for ${changedFiles.size} files...`);
 
       console.log("Staging changes...");
 
@@ -89,6 +95,9 @@ function onFileEvent(type, filePath) {
       if (committed) {
         console.log("✅ Commit created:", message);
       }
+
+      // clear tracked files
+      changedFiles.clear();
     } finally {
       isCommitting = false;
     }
