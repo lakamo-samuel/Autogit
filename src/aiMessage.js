@@ -51,16 +51,22 @@ const API_KEY = getApiKey();
             {
               parts: [
                 {
-                  text: `You are a senior software engineer.
+                  text: `You are an expert software engineer.
 
-Analyze the git diff and write a conventional commit message.
+Analyze the git diff and create a concise conventional commit message.
 
 Rules:
-- Format: type(scope): description
-- Types: feat, fix, refactor, docs, test, chore
-- Use imperative mood
-- Max 12 words
-- No quotes
+- format: type(scope): description
+- types: feat, fix, refactor, chore, docs, test
+- max 12 words
+- imperative mood
+- lowercase
+- no punctuation at end
+
+Example outputs:
+feat(auth): add jwt authentication
+fix(api): handle null user response
+refactor(db): simplify query builder
 
 Git diff:
 ${diff}`,
