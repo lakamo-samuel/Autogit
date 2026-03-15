@@ -62,13 +62,13 @@ ${diff}`
     if (!res.ok) {
        const err = await res.text();
        console.error(err);
-      console.warn(
-        `🧱 Gemini HTTP ${res.status}, using fallback commit message`,
-      );
+      // console.warn(
+      //   `🧱 Gemini HTTP ${res.status}, using fallback commit message`,
+      // );
       return generateCommitMessage();
     }
 
-    const data = (await res.json());
+    const data = await res.json();
 
     const aiMessage = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
@@ -78,6 +78,7 @@ ${diff}`
     }
 
     console.log("🤖 Using AI-generated commit message");
+    console.log("AI Message:", aiMessage);
     return aiMessage;
   } catch (error) {
     console.error("🧱 Gemini failed, using fallback:", error);
