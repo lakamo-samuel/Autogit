@@ -14,7 +14,7 @@ let commitTimer = null;
 let isCommitting = false;
 
 const COMMIT_DELAY = 5000;
-
+const changedFiles = new Set();
 export function startWatcher(config = defaultConfig) {
   if (watcher) {
     console.log("Watcher already running");
