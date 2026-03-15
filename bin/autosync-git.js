@@ -11,7 +11,7 @@ import { loginUser } from "../src/login.js";
 const program = new Command();
 
 program
-  .name("autogit")
+  .name("autosync-git")
   .description("Auto commit your code with AI-generated messages")
   .version("0.1.0");
 

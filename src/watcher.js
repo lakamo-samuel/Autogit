@@ -82,7 +82,7 @@ function onFileEvent(type, filePath) {
     try {
       isCommitting = true;
 
-      console.log(`📦 Preparing commit for ${changedFiles.size} files...`);
+      console.log(` Preparing commit for ${changedFiles.size} files...`);
 
       console.log("Staging changes...");
 
