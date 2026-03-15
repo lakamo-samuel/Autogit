@@ -13,7 +13,7 @@ let watcher = null;
 let commitTimer = null;
 let isCommitting = false;
 
-const COMMIT_DELAY = 5000;
+const COMMIT_DELAY = 15000;
 const changedFiles = new Set();
 export function startWatcher(config = defaultConfig) {
   if (watcher) {
