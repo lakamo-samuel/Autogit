@@ -2,7 +2,7 @@ import { execSync } from "child_process";
 import { generateCommitMessage } from "./commitMessage.js";
 import { defaultConfig, getApiKey } from "./config.js";
 
-const BACKEND_URL = "https://your-deployed-backend.com";
+const BACKEND_URL = "https://localhost:3000"; // TODO: replace with your deployed backend URL
 
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
