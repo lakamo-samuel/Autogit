@@ -5,32 +5,78 @@ import path from "path";
 export const defaultConfig = {
   watchDirs: ["src"],
   interval: 300000,
-  ignored: ["node_modules", ".git", "dist", "build", ".*","package-lock.json","yarn.lock","*.log","package.json"],
+  ignored: [
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    ".*",
+    "package-lock.json",
+    "yarn.lock",
+    "*.log",
+    "package.json",
+  ],
   autoAdd: true,
   maxDiffLines: 2000,
 };
 
-const CONFIG_DIR = path.join(os.homedir(), ".autogit");
+const CONFIG_DIR = path.join(os.homedir(), ".autosync-git");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 
-export function saveApiKey(key) {
-  if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR);
+/* -------- internal helpers -------- */
+function loadConfig() {
+  try {
+    if (!fs.existsSync(CONFIG_FILE)) return {};
+    return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+  } catch {
+    return {};
   }
+}
 
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ geminiKey: key }, null, 2));
+function writeConfig(data) {
+  if (!fs.existsSync(CONFIG_DIR)) {
+    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  }
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2));
+}
 
-  console.log("✅ API key saved successfully");
+/* -------- API key -------- */
+export function saveApiKey(key) {
+  const existing = loadConfig();
+  writeConfig({ ...existing, geminiKey: key });
+  console.log("✅ API key saved. You're now in unlimited mode.");
 }
 
 export function getApiKey() {
-  if (!fs.existsSync(CONFIG_FILE)) {
-    console.log("❌ No API key found.");
-    console.log("Run: autogit login");
-    process.exit(1);
+  const config = loadConfig();
+  return config.geminiKey || null; // null = use backend mode
+}
+
+export function removeApiKey() {
+  const config = loadConfig();
+
+  if (!config.geminiKey) {
+    console.log("ℹ️  No API key saved.");
+    return;
   }
 
-  const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+  delete config.geminiKey;
+  writeConfig(config);
+  console.log(
+    "🗑️  API key removed. Switching to autosync service (rate limited).",
+  );
+}
 
-  return config.geminiKey;
+/* -------- status -------- */
+export function showStatus() {
+  const key = getApiKey();
+
+  if (key) {
+    console.log("🔑 Mode: Direct (your Gemini API key)");
+    console.log("   Unlimited usage, billed to your Google account");
+  } else {
+    console.log("🌐 Mode: Autosync Service (shared backend)");
+    console.log("   Rate limited: 5 req/min, 50 req/day");
+    console.log("   Run: autosync-git login  → add your key for unlimited use");
+  }
 }

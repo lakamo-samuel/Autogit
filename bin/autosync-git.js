@@ -6,7 +6,8 @@ import {
   stopWatcher,
   showConfig,
 } from "../src/index.js";
-import { loginUser } from "../src/login.js";
+import { loginUser, logoutUser } from "../src/login.js";
+import { showStatus } from "../src/config.js";
 
 const program = new Command();
 
@@ -17,21 +18,37 @@ program
 
 program
   .command("init")
-  .description("Initialize AutoGit config")
+  .description("Initialize autosync-git in current repo")
   .action(initRepo);
+
 program
   .command("login")
-  .description("Add your Gemini API key")
+  .description("Set your Gemini API key for unlimited mode")
   .action(loginUser);
+
+program
+  .command("logout")
+  .description("Remove saved API key, switch back to autosync service")
+  .action(logoutUser);
+
 program
   .command("start")
-  .description("Start AutoGit watcher")
+  .description("Start autosync watcher")
   .action(startWatcher);
 
-program.command("stop").description("Stop AutoGit watcher").action(stopWatcher);
+program
+  .command("stop")
+  .description("Stop autosync watcher")
+  .action(stopWatcher);
 
 program
   .command("config")
-  .description("Show current AutoGit config")
+  .description("Show current autosync config")
   .action(showConfig);
+
+program
+  .command("status")
+  .description("Show current mode (direct key or autosync service)")
+  .action(showStatus);
+
 program.parse(process.argv);

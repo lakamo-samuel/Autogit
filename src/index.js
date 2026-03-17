@@ -9,13 +9,13 @@ import {
 
 // CLI actions
 export function initRepo() {
-  const configPath = path.join(process.cwd(), ".autogitrc.json");
+  const configPath = path.join(process.cwd(), ".Autosync-gitrc.json");
   if (fs.existsSync(configPath)) {
-    console.log("AutoGit config already exists!");
+    console.log("Autosync-git config already exists!");
     return;
   }
   fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
-  console.log("AutoGit config initialized!");
+  console.log("Autosync-git config initialized!");
 }
 
 
@@ -30,11 +30,11 @@ export function stopWatcher() {
 }
 
 export function showConfig() {
-  const configPath = path.join(process.cwd(), ".autogitrc.json");
+  const configPath = path.join(process.cwd(), ".Autosync-gitrc.json");
   if (fs.existsSync(configPath)) {
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    console.log("Current AutoGit config:", config);
+    console.log("Current Autosync-git config:", config);
   } else {
-    console.log('Config not found. Run "autogit init" first.');
+    console.log('Config not found. Run "Autosync-git init" first.');
   }
 }
