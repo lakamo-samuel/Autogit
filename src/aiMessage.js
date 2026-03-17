@@ -91,7 +91,6 @@ export async function generateCommitMessageAI() {
       const res = await fetch(`${BACKEND_URL}/api/v1/getmessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
         body: JSON.stringify({ diff }),
       });
 
