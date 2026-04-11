@@ -3,36 +3,30 @@ import path from "path";
 import { defaultConfig, AutoSyncConfig } from "./config.js";
 import { stageAllChanges, commitChanges, isGitRepo } from "./git.js";
 import { generateCommitMessageAI } from "./aiMessage.js";
+import { COMMIT_DELAY, WATCHER_IGNORED } from "./data/config/configDefaults.js";
+import { WATCHER_STRINGS } from "./data/config/watcher/watcherStrings.js";
 
 let watcher: FSWatcher | null = null;
 let commitTimer: NodeJS.Timeout | null = null;
 let isCommitting = false;
 
-const COMMIT_DELAY = 15000;
 const changedFiles = new Set<string>();
 
 export const startWatcher = (config: AutoSyncConfig = defaultConfig): void => {
     if (watcher) {
-        console.log("Watcher already running");
+        console.log(WATCHER_STRINGS.alreadyRunning);
         return;
     }
 
     if (!isGitRepo()) {
-        console.log("Not a git repository");
+        console.log(WATCHER_STRINGS.notGitRepo);
         return;
     }
 
     const watchPaths = config.watchDirs.map((dir) => path.join(process.cwd(), dir));
 
     watcher = chokidar.watch(watchPaths, {
-        ignored: [
-            "**/node_modules/**",
-            "**/.git/**",
-            "**/dist/**",
-            "**/build/**",
-            "**/.env",
-            "**/coverage/**",
-        ],
+        ignored: WATCHER_IGNORED,
         ignoreInitial: true,
         persistent: true,
     });
@@ -42,27 +36,28 @@ export const startWatcher = (config: AutoSyncConfig = defaultConfig): void => {
         .on("change", (filePath) => onFileEvent("modified", filePath))
         .on("unlink", (filePath) => onFileEvent("deleted", filePath));
 
-    console.log("AutoGit watching for changes...");
+    console.log(WATCHER_STRINGS.watching);
 };
 
 export const stopWatcher = (): void => {
     if (!watcher) {
-        console.log("Watcher not running");
+        console.log(WATCHER_STRINGS.notRunning);
         return;
     }
 
     watcher.close();
     watcher = null;
+
     if (commitTimer) {
         clearTimeout(commitTimer);
         commitTimer = null;
     }
 
-    console.log("AutoGit watcher stopped");
+    console.log(WATCHER_STRINGS.stopped);
 };
 
 const onFileEvent = (type: "added" | "modified" | "deleted", filePath: string): void => {
-    console.log(`[${type.toUpperCase()}] ${filePath}`);
+    console.log(WATCHER_STRINGS.fileEvent(type, filePath));
 
     changedFiles.add(filePath);
 
@@ -71,34 +66,28 @@ const onFileEvent = (type: "added" | "modified" | "deleted", filePath: string): 
     }
 
     commitTimer = setTimeout(async () => {
-        if (isCommitting) {
-            return;
-        }
-
-        if (changedFiles.size === 0) {
-            return;
-        }
+        if (isCommitting || changedFiles.size === 0) return;
 
         try {
             isCommitting = true;
 
             const tracked = [...changedFiles].map((file) => path.relative(process.cwd(), file));
 
-            console.log(` Preparing commit for ${tracked.length} files...`);
-            console.log("  tracked files:", tracked);
+            console.log(WATCHER_STRINGS.preparingCommit(tracked.length));
+            console.log(WATCHER_STRINGS.trackedFiles(tracked));
+            console.log(WATCHER_STRINGS.staging);
 
-            console.log("Staging changes...");
             stageAllChanges();
 
             const message = await generateCommitMessageAI();
-            console.log("  AI/fallback message:", message);
+            console.log(WATCHER_STRINGS.aiFallbackMessage(message));
 
             const committed = commitChanges(message);
 
             if (committed) {
-                console.log("Commit created:", message);
+                console.log(WATCHER_STRINGS.commitCreated(message));
             } else {
-                console.warn("git commit failed");
+                console.warn(WATCHER_STRINGS.commitFailed);
             }
 
             changedFiles.clear();

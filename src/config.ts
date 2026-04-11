@@ -2,6 +2,9 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
+import { FALLBACK_CONFIG, RC_FILE, CONFIG_DIR_NAME, CONFIG_FILE_NAME } from "./data/config/configDefaults.js";
+import { CONFIG_MESSAGES } from "./data/config/configMessages.js";
+
 export interface AutoSyncConfig {
     watchDirs: string[];
     interval: number;
@@ -10,36 +13,34 @@ export interface AutoSyncConfig {
     maxDiffLines: number;
 }
 
-export const defaultConfig: AutoSyncConfig = {
-    watchDirs: ["src"],
-    interval: 300000,
-    ignored: [
-        "node_modules",
-        ".git",
-        "dist",
-        "build",
-        ".*",
-        "package-lock.json",
-        "yarn.lock",
-        "*.log",
-        "package.json",
-    ],
-    autoAdd: true,
-    maxDiffLines: 2000,
+// Project-level config file (.autogitrc.json in cwd)
+const loadRcConfig = (): Partial<AutoSyncConfig> => {
+    try {
+        if (!fs.existsSync(RC_FILE)) return {};
+        const raw = fs.readFileSync(RC_FILE, "utf-8");
+        return JSON.parse(raw) as Partial<AutoSyncConfig>;
+    } catch {
+        return {};
+    }
 };
 
+// Resolved config: fallback → .autogitrc.json
+export const defaultConfig: AutoSyncConfig = {
+    ...FALLBACK_CONFIG,
+    ...loadRcConfig(),
+};
+
+// User-level stored config `~/.autosync-git/config.json`
 interface StoredConfig {
     geminiKey?: string;
 }
 
-const CONFIG_DIR = path.join(os.homedir(), ".autosync-git");
-const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
+const CONFIG_DIR = path.join(os.homedir(), CONFIG_DIR_NAME);
+const CONFIG_FILE = path.join(CONFIG_DIR, CONFIG_FILE_NAME);
 
 const loadConfig = (): StoredConfig => {
     try {
-        if (!fs.existsSync(CONFIG_FILE)) {
-            return {};
-        }
+        if (!fs.existsSync(CONFIG_FILE)) return {};
         const raw = fs.readFileSync(CONFIG_FILE, "utf-8");
         return JSON.parse(raw) as StoredConfig;
     } catch {
@@ -51,13 +52,14 @@ const writeConfig = (data: StoredConfig): void => {
     if (!fs.existsSync(CONFIG_DIR)) {
         fs.mkdirSync(CONFIG_DIR, { recursive: true });
     }
+
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2));
 };
 
 export const saveApiKey = (key: string): void => {
     const existing = loadConfig();
     writeConfig({ ...existing, geminiKey: key });
-    console.log("API key saved. Unlimited mode enabled.");
+    console.log(CONFIG_MESSAGES.apiKeySaved);
 };
 
 export const getApiKey = (): string | null => {
@@ -69,25 +71,25 @@ export const removeApiKey = (): void => {
     const config = loadConfig();
 
     if (!config.geminiKey) {
-        console.log("No API key saved.");
+        console.log(CONFIG_MESSAGES.apiKeyNone);
         return;
     }
 
     delete config.geminiKey;
     writeConfig(config);
-    console.log("API key removed. Switching to autosync service.");
+    console.log(CONFIG_MESSAGES.apiKeyRemoved);
 };
 
 export const showStatus = (): void => {
     const key = getApiKey();
 
     if (key) {
-        console.log("Mode: Direct (personal Gemini API key)");
-        console.log("Unlimited usage, billed to your Google account");
+        console.log(CONFIG_MESSAGES.statusDirect);
+        console.log(CONFIG_MESSAGES.statusDirectDetail);
         return;
     }
 
-    console.log("Mode: Autosync Service (shared backend)");
-    console.log("Rate limited: 5 requests/min, 50 requests/day");
-    console.log("Run autosync-git login to add your key for unlimited use");
+    console.log(CONFIG_MESSAGES.statusShared);
+    console.log(CONFIG_MESSAGES.statusSharedDetail);
+    console.log(CONFIG_MESSAGES.statusSharedHint);
 };

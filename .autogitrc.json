@@ -1,11 +1,16 @@
 {
-  "watchDirs": [
-    "src"
-  ],
+  "watchDirs": ["src"],
   "interval": 300000,
   "ignored": [
     "node_modules",
-    ".git"
+    ".git",
+    "dist",
+    "build",
+    ".*",
+    "package-lock.json",
+    "yarn.lock",
+    "*.log",
+    "package.json"
   ],
   "autoAdd": true,
   "maxDiffLines": 2000

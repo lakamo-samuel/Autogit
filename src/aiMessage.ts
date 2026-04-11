@@ -1,30 +1,14 @@
 import { execSync } from "child_process";
 import { generateCommitMessage } from "./commitMessage.js";
 import { defaultConfig, getApiKey } from "./config.js";
-
-const BACKEND_URL = "http://localhost:3000";
-const GEMINI_URL =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-
-const PROMPT = (diff: string): string => `You are an expert software engineer.
-
-Analyze the git diff and create a concise conventional commit message.
-
-Rules:
-- format: type(scope): description
-- types: feat, fix, refactor, chore, docs, test
-- max 12 words
-- imperative mood
-- lowercase
-- no punctuation at end
-
-Example outputs:
-feat(auth): add jwt authentication
-fix(api): handle null user response
-refactor(db): simplify query builder
-
-Git diff:
-${diff}`;
+import {
+    BACKEND_URL,
+    GEMINI_URL,
+    GEMINI_GENERATION_CONFIG,
+    AI_TIMEOUT_MS,
+    COMMIT_PROMPT,
+} from "./data/ai/aiDefaults.js";
+import { AI_STRINGS } from "./data/ai/aiStrings.js";
 
 interface GeminiResponse {
     candidates?: Array<{
@@ -43,7 +27,7 @@ export const generateCommitMessageAI = async (): Promise<string> => {
 
     const fallback = (): string => {
         const fallbackMessage = generateCommitMessage();
-        console.log("  fallback commit message:", fallbackMessage);
+        console.log(AI_STRINGS.fallback(fallbackMessage));
         return fallbackMessage;
     };
 
@@ -56,27 +40,26 @@ export const generateCommitMessageAI = async (): Promise<string> => {
     }
 
     if (!diff) {
-        console.log("No staged changes, using fallback");
+        console.log(AI_STRINGS.noStagedChanges);
         return fallback();
     }
 
     const diffLines = diff.split("\n");
-    console.log(`  diff lines: ${diffLines.length}`);
+    console.log(AI_STRINGS.diffLines(diffLines.length));
+
     if (diffLines.length > defaultConfig.maxDiffLines) {
         diff = diffLines.slice(0, defaultConfig.maxDiffLines).join("\n");
-        console.log(
-            `  diff truncated to ${defaultConfig.maxDiffLines} lines (original ${diffLines.length})`,
-        );
+        console.log(AI_STRINGS.diffTruncated(defaultConfig.maxDiffLines, diffLines.length));
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
     try {
         const userKey = getApiKey();
 
         if (userKey) {
-            console.log("Using your Gemini API key...");
+            console.log(AI_STRINGS.usingUserKey);
 
             const res = await fetch(GEMINI_URL, {
                 method: "POST",
@@ -86,20 +69,16 @@ export const generateCommitMessageAI = async (): Promise<string> => {
                 },
                 signal: controller.signal,
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: PROMPT(diff) }] }],
-                    generationConfig: {
-                        temperature: 0.3,
-                        maxOutputTokens: 60,
-                        responseMimeType: "text/plain",
-                    },
+                    contents: [{ parts: [{ text: COMMIT_PROMPT(diff) }] }],
+                    generationConfig: GEMINI_GENERATION_CONFIG,
                 }),
             });
 
             const resText = await res.text();
 
             if (!res.ok) {
-                console.error("Gemini response error:", res.status, res.statusText);
-                console.error("  response body:", resText);
+                console.error(AI_STRINGS.geminiResponseError(res.status, res.statusText));
+                console.error(AI_STRINGS.geminiResponseBody(resText));
                 throw new Error(`Gemini error: ${res.status} ${res.statusText}`);
             }
 
@@ -107,8 +86,8 @@ export const generateCommitMessageAI = async (): Promise<string> => {
             try {
                 data = resText ? (JSON.parse(resText) as GeminiResponse) : {};
             } catch (parseErr) {
-                console.error("Failed to parse Gemini response:", (parseErr as Error).message);
-                console.error("  raw response:", resText);
+                console.error(AI_STRINGS.geminiParseError((parseErr as Error).message));
+                console.error(AI_STRINGS.geminiRawResponse(resText));
                 throw new Error("Gemini response parse error");
             }
 
@@ -116,15 +95,15 @@ export const generateCommitMessageAI = async (): Promise<string> => {
 
             const aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
             if (!aiMessage) {
-                console.log("Empty AI message, using fallback");
+                console.log(AI_STRINGS.geminiEmptyMessage);
                 return fallback();
             }
 
-            console.log("AI Commit:", aiMessage);
+            console.log(AI_STRINGS.aiCommit(aiMessage));
             return aiMessage;
         }
 
-        console.log("Generating commit via autosync service...");
+        console.log(AI_STRINGS.usingBackend);
 
         const res = await fetch(`${BACKEND_URL}/api/v1/getmessage`, {
             method: "POST",
@@ -134,8 +113,8 @@ export const generateCommitMessageAI = async (): Promise<string> => {
 
         if (res.status === 429) {
             const errData = (await res.json()) as { error?: string; retryAfter?: string };
-            console.warn(`Rate limited: ${errData.error} (retry in ${errData.retryAfter})`);
-            console.warn("Run autosync-git login to add your key for unlimited use");
+            console.warn(AI_STRINGS.rateLimited(errData.error ?? "", errData.retryAfter ?? ""));
+            console.warn(AI_STRINGS.rateLimitedHint);
             return fallback();
         }
 
@@ -148,19 +127,19 @@ export const generateCommitMessageAI = async (): Promise<string> => {
         clearTimeout(timeout);
 
         if (!backendMessage) {
-            console.log("Empty response, using fallback");
+            console.log(AI_STRINGS.backendEmptyMessage);
             return fallback();
         }
 
-        console.log("AI Commit:", backendMessage);
+        console.log(AI_STRINGS.aiCommit(backendMessage));
         return backendMessage;
     } catch (err) {
         clearTimeout(timeout);
 
         if ((err as Error).name === "AbortError") {
-            console.warn("Request timed out, using fallback");
+            console.warn(AI_STRINGS.requestTimeout);
         } else {
-            console.error("Request failed:", (err as Error).message);
+            console.error(AI_STRINGS.requestFailed((err as Error).message));
         }
 
         return fallback();
