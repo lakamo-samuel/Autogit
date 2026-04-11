@@ -5,9 +5,9 @@ import {
   startWatcher,
   stopWatcher,
   showConfig,
-} from "../src/index.js";
-import { loginUser, logoutUser } from "../src/login.js";
-import { showStatus } from "../src/config.js";
+} from "../dist/index.js";
+import { loginUser, logoutUser } from "../dist/login.js";
+import { showStatus } from "../dist/config.js";
 
 const program = new Command();
 
