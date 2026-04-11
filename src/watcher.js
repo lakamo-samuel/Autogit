@@ -115,12 +115,11 @@ const onFileEvent = (type, filePath) => {
     }, COMMIT_DELAY);
 }
 
-process.on("SIGINT", () => {
-    if (watcher) watcher.close();
-    process.exit();
-});
+process.on("SIGINT", cleanup);
+process.on("SIGTERM", cleanup);
+process.on("exit", cleanup);
 
-process.on("SIGKILL", () => {
-    if (watcher) watcher.close();
-    process.exit();
-});
+const cleanup = () => {
+    if (watcher)
+    watcher.close();
+}
